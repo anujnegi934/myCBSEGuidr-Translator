@@ -1,0 +1,21 @@
+# Environment
+.env
+*.pyc
+__pycache__/
+
+# Chrome profile (large, machine-specific)
+my_chrome_profile/
+
+# Logs
+logs/
+
+# State files
+state.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
