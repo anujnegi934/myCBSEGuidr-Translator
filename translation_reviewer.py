@@ -372,6 +372,15 @@ def main():
                     stop_requested = True
                     continue
             else:
+                # Add comment for rejected questions
+                try:
+                    is_rejected = review_page.evaluate("() => document.body.innerText.includes('Rejected by:')")
+                    if is_rejected:
+                        print("  [!] Rejected question detected. Adding 'done' comment.")
+                        fill_comment(review_page, "done")
+                except Exception as e:
+                    print(f"  [WARN] Failed to check for rejection or fill comment: {e}")
+
                 click_btn(review_page, "SAVE & NEXT")
                 wait_popup(review_page)
                 print(f"  Waiting {WAIT_AFTER_SAVE}s for next question...")
