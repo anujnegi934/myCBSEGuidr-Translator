@@ -34,7 +34,7 @@ class Logger:
 # ── Import config ─────────────────────────────────────────────────────────────
 from config import (
     TARGET_URL, GEMINI_URL, USER_DATA, FIELDS, LOG_DIR,
-    WAIT_AFTER_SAVE, WAIT_FOR_PAGE_LOAD, GEMINI_WEB_TIMEOUT,
+    WAIT_AFTER_SAVE, WAIT_FOR_PAGE_LOAD, GEMINI_WEB_TIMEOUT, SYSTEM_PROMPT
 )
 
 # Set up logging
@@ -95,8 +95,7 @@ def translate_with_gemini_web(gemini_page, data):
 
     fields_str = "\n".join(f"[FIELD: {k}]\n{v}\n[END: {k}]" for k, v in to_translate.items())
     prompt = (
-        'Translate the English text inside each field below into Hindi.\n'
-        'Return the Hindi translations wrapped in exactly the same text delimiters. Do NOT use JSON.\n'
+        SYSTEM_PROMPT + '\n\n' +
         'Keep all [[MATH_N]] placeholders exactly where they are — do NOT translate, remove, or change them.\n\n'
         + fields_str
     )
