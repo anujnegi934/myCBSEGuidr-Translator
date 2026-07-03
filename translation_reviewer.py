@@ -95,7 +95,8 @@ def translate_with_gemini_web(gemini_page, data):
 
     fields_str = "\n".join(f"[FIELD: {k}]\n{v}\n[END: {k}]" for k, v in to_translate.items())
     prompt = (
-        'Translate to Hindi. Return the translations wrapped in exactly the same text delimiters. Do NOT use JSON.\n'
+        'Translate the English text inside each field below into Hindi.\n'
+        'Return the Hindi translations wrapped in exactly the same text delimiters. Do NOT use JSON.\n'
         'Keep all [[MATH_N]] placeholders exactly where they are — do NOT translate, remove, or change them.\n\n'
         + fields_str
     )
@@ -136,6 +137,7 @@ def translate_with_gemini_web(gemini_page, data):
 
         text = prev.strip()
         print(f"  ← Gemini Web: {len(text)} chars")
+        print(f"  [DEBUG] Raw response:\n{text[:500]}")
 
         # Parse delimited text from response
         result = {}
@@ -154,6 +156,7 @@ def translate_with_gemini_web(gemini_page, data):
             if not val.strip().startswith('<p>') and not val.strip().startswith('<ol'):
                 val = f'<p>{val}</p>'
             result[key] = val
+            print(f"  [DEBUG] {key} = {val[:80]}...")
 
         if result:
             return result
