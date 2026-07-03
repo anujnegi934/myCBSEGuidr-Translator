@@ -21,7 +21,7 @@ USE_API = bool(GEMINI_API_KEY)  # Use API if key is available, else fall back to
 
 # ── CKEditor Fields ──────────────────────────────────────────────────────────
 # English fields that the script reads from
-FIELDS = ["question", "option1", "option2", "option3", "option4", "explanation", "solution", "paragraph"]
+FIELDS = ["question", "option1", "option2", "option3", "option4", "option5", "option6", "explanation", "solution", "paragraph"]
 
 # ── Translation Prompt ────────────────────────────────────────────────────────
 SYSTEM_PROMPT = """You are an expert English-to-Hindi translator for educational content (CBSE curriculum).
@@ -33,8 +33,9 @@ Rules:
 4. Use proper Hindi grammar and vocabulary appropriate for school students.
 5. Mathematical expressions, formulas, numbers, and symbols should remain unchanged.
 6. Proper nouns (names of people, places, scientific terms) can be transliterated to Hindi.
-7. Return ONLY a valid JSON object with the same field names as keys and Hindi translations as values.
-8. No explanation, no markdown, no code fences — just the raw JSON object."""
+7. The user will provide fields in the format [FIELD: name] content [END: name].
+8. You MUST return your translations wrapped in exactly the same delimiters. Do NOT use JSON.
+9. No explanation, no markdown, no code fences — just the raw delimited text."""
 
 # ── Timing ────────────────────────────────────────────────────────────────────
 WAIT_AFTER_SAVE = 4        # Seconds to wait after clicking Save & Next

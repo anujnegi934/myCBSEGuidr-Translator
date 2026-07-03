@@ -74,20 +74,30 @@ def extract_data(page):
 def translate_with_gemini_web(gemini_page, data):
     """Translate using gemini.google.com web interface (fallback method)."""
     to_translate = {}
+    math_store = {}
     for k, v in data.items():
         low = v.lower()
         if '<table' not in low and '<tr' not in low and '<td' not in low:
-            to_translate[k] = v[:400].replace('"', "'")
+            # Extract math formulas and replace with placeholders
+            formulas = []
+            def replace_math(m):
+                idx = len(formulas)
+                formulas.append(m.group(0))
+                return f'[[MATH_{idx}]]'
+            text = re.sub(r'<span\s+class=["\']math-tex["\']>\s*(\{tex\}.*?\{/tex\})\s*</span>', replace_math, v)
+            text = re.sub(r'\{tex\}.*?\{/tex\}', replace_math, text)
+            math_store[k] = formulas
+            to_translate[k] = text
 
     if not to_translate:
         print("  All fields have tables — skipping Gemini")
         return {}
 
-    fields_str = "\n".join(f'  "{k}": "{v}"' for k, v in to_translate.items())
+    fields_str = "\n".join(f"[FIELD: {k}]\n{v}\n[END: {k}]" for k, v in to_translate.items())
     prompt = (
-        'Translate to Hindi. Return ONLY a JSON object with field names as keys '
-        'and Hindi translations as values. Preserve any HTML tags exactly. No explanation.\n\n'
-        '{\n' + fields_str + '\n}'
+        'Translate to Hindi. Return the translations wrapped in exactly the same text delimiters. Do NOT use JSON.\n'
+        'Keep all [[MATH_N]] placeholders exactly where they are — do NOT translate, remove, or change them.\n\n'
+        + fields_str
     )
 
     try:
@@ -113,6 +123,9 @@ def translate_with_gemini_web(gemini_page, data):
         for _ in range(60):
             time.sleep(0.5)
             try:
+                cur = last_msg.inner_html() if hasattr(last_msg, 'inner_html') else last_msg.inner_text()
+                if not cur: continue
+                # We need to extract the actual text, inner_html preserves br tags
                 cur = last_msg.inner_text().strip()
                 if cur and cur == prev:
                     stable += 1
@@ -124,13 +137,28 @@ def translate_with_gemini_web(gemini_page, data):
         text = prev.strip()
         print(f"  ← Gemini Web: {len(text)} chars")
 
-        # Parse JSON from response
-        m = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', text)
-        if m: return json.loads(m.group(1))
-        m = re.search(r'\{[\s\S]*\}', text)
-        if m: return json.loads(m.group(0))
+        # Parse delimited text from response
+        result = {}
+        for match in re.finditer(r'\[FIELD:\s*([a-zA-Z0-9_ ]+)\](.*?)\[END:\s*\1\]', text, flags=re.DOTALL | re.IGNORECASE):
+            key = match.group(1).strip().lower().replace(' ', '')
+            val = match.group(2).strip()
 
-        print(f"  Could not parse JSON: {text[:100]}")
+            # Replace [[MATH_N]] placeholders back with original math HTML
+            if key in math_store:
+                for idx, original in enumerate(math_store[key]):
+                    if not original.startswith('<span'):
+                        original = f'<span class="math-tex">{original}</span>'
+                    val = val.replace(f'[[MATH_{idx}]]', original)
+
+            # Wrap in <p> tags if not already present
+            if not val.strip().startswith('<p>') and not val.strip().startswith('<ol'):
+                val = f'<p>{val}</p>'
+            result[key] = val
+
+        if result:
+            return result
+
+        print(f"  Could not parse tags: {text[:100]}")
         return {}
     except Exception as e:
         print(f"  Gemini Web error: {e}")
