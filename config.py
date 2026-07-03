@@ -33,7 +33,10 @@ Rules:
 4. Use proper Hindi grammar and vocabulary appropriate for school students.
 5. Mathematical expressions, formulas, numbers, and symbols should remain unchanged.
 6. Proper nouns (names of people, places, scientific terms) can be transliterated to Hindi.
-7. The user will provide fields in the format [FIELD: name] content [END: name].
+7. The user will provide fields in the format:
+---BEGIN name---
+English text
+---END name---
 8. You MUST return your translations wrapped in exactly the same delimiters. Do NOT use JSON.
 9. No explanation, no markdown, no code fences — just the raw delimited text."""
 

@@ -93,7 +93,7 @@ def translate_with_gemini_web(gemini_page, data):
         print("  All fields have tables — skipping Gemini")
         return {}
 
-    fields_str = "\n".join(f"[FIELD: {k}]\n{v}\n[END: {k}]" for k, v in to_translate.items())
+    fields_str = "\n".join(f"---BEGIN {k}---\n{v}\n---END {k}---" for k, v in to_translate.items())
     prompt = (
         SYSTEM_PROMPT + '\n\n' +
         'Keep all [[MATH_N]] placeholders exactly where they are — do NOT translate, remove, or change them.\n\n'
@@ -140,7 +140,7 @@ def translate_with_gemini_web(gemini_page, data):
 
         # Parse delimited text from response
         result = {}
-        for match in re.finditer(r'\[FIELD:\s*([a-zA-Z0-9_ ]+)\](.*?)\[END:\s*\1\]', text, flags=re.DOTALL | re.IGNORECASE):
+        for match in re.finditer(r'---BEGIN\s+([a-zA-Z0-9_ ]+)---\s*(.*?)\s*---END\s+\1---', text, flags=re.DOTALL | re.IGNORECASE):
             key = match.group(1).strip().lower().replace(' ', '')
             val = match.group(2).strip()
 
