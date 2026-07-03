@@ -54,7 +54,7 @@ def extract_data(page):
     return page.evaluate("""
         (() => {
             if (typeof CKEDITOR === 'undefined') return null;
-            const fields = ['question','option1','option2','option3','option4',
+            const fields = ['question','option1','option2','option3','option4','option5','option6',
                            'explanation','solution','paragraph'];
             const out = {};
             fields.forEach(f => {
