@@ -107,13 +107,10 @@ def translate_with_gemini_web(gemini_page, data):
     )
 
     try:
-        # Start a fresh Gemini chat every time to avoid history buildup making it lazy
-        try:
-            new_chat_btn = gemini_page.locator('a[href="/app"], button:has-text("New chat"), [aria-label="New chat"]').first
-            new_chat_btn.click(timeout=3000)
-            time.sleep(1.5)
-        except Exception:
-            pass  # If "New chat" button not found, continue anyway
+        # Navigate to Gemini URL to always start a guaranteed fresh chat
+        gemini_page.goto(GEMINI_URL, wait_until="domcontentloaded", timeout=15000)
+        time.sleep(2)
+        print("  ↺ Gemini Web: fresh chat started")
 
         box = gemini_page.locator('div[contenteditable="true"]').first
         box.wait_for(state="visible", timeout=10000)
