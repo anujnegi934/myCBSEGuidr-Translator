@@ -78,6 +78,12 @@ def translate_with_gemini_web(gemini_page, data):
     for k, v in data.items():
         low = v.lower()
         if '<table' not in low and '<tr' not in low and '<td' not in low:
+            # Skip fields that are purely numeric (options like 3600, 7200 etc.)
+            # Strip all HTML tags and check if the remaining text is just a number
+            stripped = re.sub(r'<[^>]+>', '', v).strip()
+            if re.fullmatch(r'[\d\s,\.]+', stripped):
+                print(f"  [SKIP] {k}: numeric-only content ({stripped[:30]}) — no translation needed")
+                continue
             # Extract math formulas and replace with placeholders
             formulas = []
             def replace_math(m):
@@ -101,6 +107,14 @@ def translate_with_gemini_web(gemini_page, data):
     )
 
     try:
+        # Start a fresh Gemini chat every time to avoid history buildup making it lazy
+        try:
+            new_chat_btn = gemini_page.locator('a[href="/app"], button:has-text("New chat"), [aria-label="New chat"]').first
+            new_chat_btn.click(timeout=3000)
+            time.sleep(1.5)
+        except Exception:
+            pass  # If "New chat" button not found, continue anyway
+
         box = gemini_page.locator('div[contenteditable="true"]').first
         box.wait_for(state="visible", timeout=10000)
 
@@ -143,6 +157,11 @@ def translate_with_gemini_web(gemini_page, data):
         for match in re.finditer(r'---BEGIN\s+([a-zA-Z0-9_ ]+)---\s*(.*?)\s*---END\s+\1---', text, flags=re.DOTALL | re.IGNORECASE):
             key = match.group(1).strip().lower().replace(' ', '')
             val = match.group(2).strip()
+
+            # Skip empty translations — Gemini returned nothing for this field
+            if not val:
+                print(f"  [SKIP] {key}: Gemini returned empty — keeping original")
+                continue
 
             # Replace [[MATH_N]] placeholders back with original math HTML
             if key in math_store:
@@ -322,10 +341,11 @@ def main():
         stop_requested = False
         print("\nRunning. Press Ctrl+C to stop after current question.\n")
 
+        stuck_count = 0   # track how many times same question repeats
         while not stop_requested:
             # Wait for a NEW question to load
             data = None
-            for _ in range(100):
+            for _ in range(150):
                 try:
                     d = extract_data(review_page)
                     if d:
@@ -337,8 +357,21 @@ def main():
                 time.sleep(0.1)
 
             if not data:
-                print("[WARN] No new data. Reloading...")
+                stuck_count += 1
+                print(f"[WARN] No new data (stuck #{stuck_count}). Attempting recovery...")
                 try:
+                    # First try: force click SAVE & NEXT to advance (same q repeated)
+                    if stuck_count <= 3:
+                        print("  Trying SAVE & NEXT to advance past stuck question...")
+                        click_btn(review_page, "SAVE & NEXT")
+                        time.sleep(1)
+                        wait_popup(review_page)
+                        time.sleep(4)
+                        # Reset last_q so the same q can be detected as new if it truly changed
+                        last_q = None
+                        continue
+                    # After 3 attempts: reload page
+                    print("  Reloading page...")
                     review_page.reload(timeout=15000)
                     time.sleep(4)
                     # After reload, might be back on START page
@@ -353,10 +386,12 @@ def main():
                     if clicked:
                         print("  Re-clicked START after reload")
                         time.sleep(4)
+                    stuck_count = 0
                 except Exception as e:
-                    print(f"  Reload error: {e}")
+                    print(f"  Recovery error: {e}")
                 last_q = None
                 continue
+            stuck_count = 0  # Reset on successful new question
 
             last_q = data.get("question", "")
             count += 1

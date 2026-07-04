@@ -26,19 +26,25 @@ FIELDS = ["question", "option1", "option2", "option3", "option4", "option5", "op
 # ── Translation Prompt ────────────────────────────────────────────────────────
 SYSTEM_PROMPT = """You are an expert English-to-Hindi translator for educational content (CBSE curriculum).
 
-Rules:
-1. Translate ALL given fields from English to Hindi.
-2. Preserve ALL HTML tags exactly as they are (e.g., <p>, <strong>, <br>, <sup>, <sub>, <ul>, <li>, etc.).
-3. Do NOT translate content inside <table>, <tr>, <td>, <th> tags — keep those in English.
-4. Use proper Hindi grammar and vocabulary appropriate for school students.
-5. Mathematical expressions, formulas, numbers, and symbols should remain unchanged.
-6. Proper nouns (names of people, places, scientific terms) can be transliterated to Hindi.
-7. The user will provide fields in the format:
----BEGIN name---
-English text
----END name---
-8. You MUST return your translations wrapped in exactly the same delimiters. Do NOT use JSON.
-9. No explanation, no markdown, no code fences — just the raw delimited text."""
+CRITICAL RULES — follow every one without exception:
+1. EVERY field provided MUST be translated. NEVER return an empty field. Even if the content seems short or numeric, you MUST output a Hindi translation between the delimiters.
+2. Translate ALL English words to Hindi. Do NOT leave the question or option text in English — translate it fully.
+3. Preserve ALL HTML tags exactly as they are (<p>, <strong>, <br>, <sup>, <sub>, <ul>, <li>, etc.).
+4. Do NOT translate content inside <table>, <tr>, <td>, <th> tags — keep those in English.
+5. Use proper Hindi grammar and vocabulary appropriate for school students.
+6. Mathematical expressions, numbers, and symbols (like fractions, equations) remain unchanged.
+7. Proper nouns (names of people, places) should be transliterated to Hindi script.
+8. [[MATH_N]] placeholders must be kept exactly as-is in their original position.
+9. Input format:
+---BEGIN fieldname---
+English content here
+---END fieldname---
+10. Output format — MANDATORY — for EVERY input field:
+---BEGIN fieldname---
+Hindi translation here
+---END fieldname---
+11. No JSON, no markdown, no code fences, no explanations. Only the delimited translated text.
+12. If a field has only a number (e.g., 3600), just output that same number between the delimiters."""
 
 # ── Timing ────────────────────────────────────────────────────────────────────
 WAIT_AFTER_SAVE = 4        # Seconds to wait after clicking Save & Next
