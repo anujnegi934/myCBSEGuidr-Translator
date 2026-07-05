@@ -78,11 +78,13 @@ def translate_with_gemini_web(gemini_page, data):
     for k, v in data.items():
         low = v.lower()
         if '<table' not in low and '<tr' not in low and '<td' not in low:
-            # Skip fields that are purely numeric (options like 3600, 7200 etc.)
-            # Strip all HTML tags and check if the remaining text is just a number
+            # For purely numeric content, copy the English value as-is into
+            # the Hindi field (keeps Arabic numerals, overwrites any stale Hindi numerals).
             stripped = re.sub(r'<[^>]+>', '', v).strip()
-            if re.fullmatch(r'[\d\s,\.]+', stripped):
-                print(f"  [SKIP] {k}: numeric-only content ({stripped[:30]}) — no translation needed")
+            if re.fullmatch(r'[\d\s,\.\-%]+', stripped):
+                print(f"  [NUM] {k}: numeric-only ({stripped[:30]}) — copying English value to Hindi field")
+                math_store.setdefault(k, [])
+                to_translate[k] = f'__NUMERIC__{v}'
                 continue
             # Extract math formulas and replace with placeholders
             formulas = []
@@ -95,11 +97,20 @@ def translate_with_gemini_web(gemini_page, data):
             math_store[k] = formulas
             to_translate[k] = text
 
-    if not to_translate:
-        print("  All fields have tables — skipping Gemini")
-        return {}
+    # Split out pre-resolved numeric fields from fields that need Gemini
+    numeric_results = {}
+    gemini_fields = {}
+    for k, v in to_translate.items():
+        if v.startswith('__NUMERIC__'):
+            numeric_results[k] = v[len('__NUMERIC__'):]  # strip prefix, keep original HTML
+        else:
+            gemini_fields[k] = v
 
-    fields_str = "\n".join(f"---BEGIN {k}---\n{v}\n---END {k}---" for k, v in to_translate.items())
+    if not gemini_fields:
+        print("  All fields are numeric or tables — skipping Gemini")
+        return numeric_results
+
+    fields_str = "\n".join(f"---BEGIN {k}---\n{v}\n---END {k}---" for k, v in gemini_fields.items())
     prompt = (
         SYSTEM_PROMPT + '\n\n' +
         'Keep all [[MATH_N]] placeholders exactly where they are — do NOT translate, remove, or change them.\n\n'
@@ -174,13 +185,14 @@ def translate_with_gemini_web(gemini_page, data):
             print(f"  [DEBUG] {key} = {val[:80]}...")
 
         if result:
+            result.update(numeric_results)   # add numeric fields (English numerals)
             return result
 
         print(f"  Could not parse tags: {text[:100]}")
-        return {}
+        return numeric_results  # still inject numeric fields even if Gemini parse failed
     except Exception as e:
         print(f"  Gemini Web error: {e}")
-        return {}
+        return numeric_results  # still inject numeric fields even if Gemini failed
 
 # ── Inject Hindi into CKEditor hindi fields ──────────────────────────────────
 def inject_hindi(page, field, hindi):
